@@ -13,7 +13,7 @@ Santika (Sewa Alat Santet dan Pelet Seketika) adalah aplikasi web simulasi biro 
 | | |
 | --- | --- |
 | **Nama project** | Santika |
-| **Nama kelompok** | [isi nama kelompok] |
+| **Nama kelompok** | Santika |
 | **Anggota** | Arjuna Rayihan Jayadi |
 | | Muhammad Rasyadan Agung Sedayu |
 
@@ -39,9 +39,10 @@ Santika (Sewa Alat Santet dan Pelet Seketika) adalah aplikasi web simulasi biro 
 - **Framework:** Laravel
 - **Bahasa:** PHP 8.2 atau lebih baru
 - **Database:** MySQL
-- **Frontend:** Blade + CSS/JS (sesuaikan dengan yang dipakai, misalnya Tailwind atau Bootstrap)
-- **Dependency:** Composer, Node.js dan npm
-- **Target browser:** browser desktop modern
+- **Frontend:** Blade, Tailwind CSS v4 browser engine, dan JavaScript
+- **Tooling frontend:** Vite dan Tailwind CSS tersedia melalui npm
+- **Dependency backend:** Composer
+- **Target browser:** browser modern; jalur UAT browser/perangkat dicatat di `docs/UAT.md`
 
 ---
 
@@ -49,8 +50,9 @@ Santika (Sewa Alat Santet dan Pelet Seketika) adalah aplikasi web simulasi biro 
 
 ### Semua pengguna
 
-- Registrasi mandiri (menghasilkan satu akun beserta satu profil), login, dan logout.
-- Seluruh halaman selain login dan registrasi dilindungi autentikasi.
+- Login dan logout berbasis sesi.
+- Registrasi publik dinonaktifkan; akun anggota dibuat oleh Admin.
+- Seluruh halaman aplikasi selain login dilindungi autentikasi dan role.
 
 ### Anggota
 
@@ -86,7 +88,7 @@ Santika (Sewa Alat Santet dan Pelet Seketika) adalah aplikasi web simulasi biro 
 | RULE-04 | Satu unit dapat terhubung ke beberapa kategori. |
 | RULE-05 | Maksimal **2 unit** yang sedang dipinjam per anggota. |
 | RULE-06 | Jatuh tempo = tanggal pinjam + **5 hari**. |
-| RULE-07 | Denda = hari terlambat × tarif harian per unit. |
+| RULE-07 | Denda = hari terlambat × DENDA_PER_HARI; tarif denda terpisah dari tarif sewa unit. |
 | RULE-08 | Hanya Admin yang dapat memproses pengembalian. |
 | RULE-09 | Anggota tidak dapat mengakses profil atau riwayat anggota lain. |
 | RULE-10 | Unit yang sedang dipinjam tidak dapat dipinjam anggota lain. |
@@ -96,10 +98,10 @@ Santika (Sewa Alat Santet dan Pelet Seketika) adalah aplikasi web simulasi biro 
 ```
 tanggal_jatuh_tempo = tanggal_pinjam + 5 hari
 hari_terlambat      = max(0, tanggal_kembali - tanggal_jatuh_tempo)
-denda               = hari_terlambat x tarif_per_hari
+denda               = hari_terlambat x DENDA_PER_HARI
 ```
 
-Tarif default: **Rp10.000 per unit per hari** (asumsi awal untuk simulasi, dapat diubah lewat konfigurasi). Contoh: terlambat 2 hari = Rp20.000 per unit.
+Tarif denda default: **Rp50.000 per hari keterlambatan**, terpisah dari tarif sewa unit dan dapat diubah lewat konfigurasi. Contoh: terlambat 2 hari = Rp100.000.
 
 ---
 
@@ -175,7 +177,7 @@ Constraint penting:
 
 ### Prasyarat
 
-- PHP 8.2+ dengan ekstensi umum Laravel (`mbstring`, `xml`, `curl`, `pdo_mysql`, `openssl`, `tokenizer`, `ctype`, `fileinfo`)
+- **PHP 8.2+ dengan ekstensi Laravel (`mbstring`, `xml`, `curl`, `pdo_mysql`, `openssl`, `tokenizer`, `ctype`, `fileinfo`); `pdo_sqlite` diperlukan untuk menjalankan tes.
 - Composer
 - Node.js dan npm
 - MySQL 8+ (atau MariaDB yang kompatibel)
@@ -223,8 +225,11 @@ Constraint penting:
    DB_USERNAME=root
    DB_PASSWORD=
 
-   # Tarif denda per unit per hari (rupiah)
-   DENDA_PER_HARI=10000
+   # Tarif denda keterlambatan per hari (rupiah), bukan tarif sewa unit
+   DENDA_PER_HARI=50000
+
+   # Password semua akun demo hasil seeder (lokal saja)
+   SANTIKA_DEMO_PASSWORD=password
    ```
 
    > Nama variabel `DENDA_PER_HARI` mengikuti konvensi tim; pastikan dibaca lewat `config/` (misalnya `config/santika.php`) dan tidak dipanggil langsung dengan `env()` di luar file config.
@@ -271,12 +276,15 @@ Tabel yang direferensikan harus dibuat lebih dulu agar foreign key valid.
 
 ## Akun Seeder
 
-Seeder membuat satu akun Admin, beberapa anggota contoh beserta profilnya, beberapa kategori gaib, dan daftar unit (termasuk contoh unit bernama sama dengan kode berbeda).
+Seeder membuat akun Admin, dua anggota beserta profil, kategori, dan tiga unit demo. Seeder menggunakan `firstOrCreate`, sehingga dapat dijalankan kembali tanpa membuat duplikat. Atur `SANTIKA_DEMO_PASSWORD` di `.env` bila ingin memakai password demo selain `password`.
 
-| Role | Email | Password |
+| Role | Email | Password default lokal |
 | --- | --- | --- |
-| Admin | [isi sesuai seeder] | [isi sesuai seeder] |
-| Anggota | [isi sesuai seeder] | [isi sesuai seeder] |
+| Admin | `admin@santika.test` | `password` |
+| Anggota | `anggota@santika.test` | `password` |
+| Anggota | `anggota2@santika.test` | `password` |
+
+> Akun dan password tersebut hanya untuk pengembangan lokal. Jangan gunakan atau seed password demo di produksi.
 
 > Ganti password bawaan sebelum aplikasi dipakai di lingkungan selain simulasi.
 
@@ -337,7 +345,7 @@ Skenario yang sebaiknya tercakup:
 | Meminjam unit ketiga saat sudah punya dua pinjaman aktif | Ditolak |
 | Meminjam unit berstatus dipinjam | Ditolak |
 | Peminjaman berhasil pada tanggal X | Jatuh tempo X + 5 hari, status unit `dipinjam` |
-| Pengembalian terlambat 2 hari | `hari_terlambat` = 2, denda Rp20.000, unit tersedia lagi |
+| Pengembalian terlambat 2 hari | `hari_terlambat` = 2, denda Rp100.000 (Rp50.000/hari), unit tersedia lagi |
 | Pengembalian tepat waktu | Denda 0 |
 | Hapus unit atau anggota yang masih punya pinjaman aktif | Ditolak |
 | Dua anggota meminjam unit yang sama bersamaan | Hanya satu yang berhasil |
@@ -348,37 +356,23 @@ Skenario yang sebaiknya tercakup:
 
 | Dokumen | Lokasi |
 | --- | --- |
-| BRD | `docs/BRD_Santika.docx` |
-| Flowchart dan ERD | `docs/Flowchart_-_ERD_Santika.docx` |
-| PRD | `docs/PRD_Santika` |
-| Hasil UAT | `docs/UAT.md` |
-| Manual book / panduan penggunaan | `docs/manual-book.md` |
+| BRD | [`docs/BRD_Santika.md`](docs/BRD_Santika.md) |
+| PRD | [`docs/PRD_Santika.md`](docs/PRD_Santika.md) |
+| Flowchart dan ERD | [`docs/flowchart-erd.md`](docs/flowchart-erd.md) |
+| Design specification / klarifikasi F&B | [`docs/design-spec.md`](docs/design-spec.md) |
+| Rencana dan catatan UAT | [`docs/UAT.md`](docs/UAT.md) |
+| Matriks keterlacakan requirement | [`docs/requirement-traceability.md`](docs/requirement-traceability.md) |
+| Dokumentasi teknis | [`docs/technical-documentation.md`](docs/technical-documentation.md) |
+| User manual / panduan penggunaan | [`docs/manual-book.md`](docs/manual-book.md) |
+| Status dan checklist deliverable | [`docs/deliverable-status.md`](docs/deliverable-status.md) |
 
 ---
 
 ## Demo dan Screenshot
 
-### Rekaman demo
+### Rekaman demo dan screenshot
 
-[isi tautan rekaman demo]
-
-### Screenshot
-
-| Halaman | Gambar |
-| --- | --- |
-| Skema database (ERD) | `docs/erd.png` |
-| Login dan registrasi | `docs/screenshots/login.png` |
-| Katalog unit | `docs/screenshots/katalog.png` |
-| Pinjaman saya | `docs/screenshots/pinjaman-saya.png` |
-| Kelola unit (admin) | `docs/screenshots/kelola-unit.png` |
-| Pengembalian dan denda (admin) | `docs/screenshots/pengembalian.png` |
-| Laporan riwayat per anggota | `docs/screenshots/laporan.png` |
-
-Contoh penyisipan gambar:
-
-```markdown
-![Skema database](docs/erd.png)
-```
+Rekaman demo dan screenshot belum dilampirkan. Ambil setelah UAT pada environment yang disepakati, lalu tambahkan berkas/tautan di sini. Diagram ERD dalam format Mermaid tersedia di [`docs/flowchart-erd.md`](docs/flowchart-erd.md).
 
 ---
 

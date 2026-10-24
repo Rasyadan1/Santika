@@ -9,7 +9,7 @@ class UnitRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return $this->user()?->isAdmin() ?? false;
     }
 
     public function rules(): array
@@ -27,7 +27,7 @@ class UnitRequest extends FormRequest
             'deskripsi' => ['nullable', 'string', 'max:1000'],
             'tarif_per_hari' => ['required', 'integer', 'min:0'],
             'categories' => ['required', 'array', 'min:1'],
-            'categories.*' => ['exists:categories,id'],
+            'categories.*' => ['integer', 'distinct', 'exists:categories,id'],
         ];
     }
 

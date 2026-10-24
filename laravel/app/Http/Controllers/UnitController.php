@@ -14,7 +14,9 @@ class UnitController extends Controller
      */
     public function katalog(Request $request)
     {
-        $search = $request->input('search');
+        $search = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+        ])['search'] ?? null;
 
         $units = Unit::with('categories')
             ->when($search, function ($query) use ($search) {
@@ -24,7 +26,13 @@ class UnitController extends Controller
             ->paginate(12)
             ->appends(['search' => $search]);
 
-        return view('units.katalog', compact('units', 'search'));
+        $activeLoans = $request->user()->profile->peminjaman()
+            ->where('status', 'dipinjam')
+            ->with('unit')
+            ->orderBy('tanggal_jatuh_tempo')
+            ->get();
+
+        return view('katalog', compact('units', 'search', 'activeLoans'));
     }
 
     /**
@@ -32,12 +40,16 @@ class UnitController extends Controller
      */
     public function index(Request $request)
     {
-        $search = $request->input('search');
+        $search = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+        ])['search'] ?? null;
 
         $units = Unit::with('categories')
             ->when($search, function ($query) use ($search) {
-                $query->where('nama_unit', 'like', "%{$search}%")
-                    ->orWhere('kode_unit', 'like', "%{$search}%");
+                $query->where(function ($query) use ($search) {
+                    $query->where('nama_unit', 'like', "%{$search}%")
+                        ->orWhere('kode_unit', 'like', "%{$search}%");
+                });
             })
             ->orderBy('kode_unit')
             ->paginate(15)

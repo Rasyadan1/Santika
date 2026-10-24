@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileRequest;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ProfileController extends Controller
 {
@@ -27,20 +28,23 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
 
-        $user->update([
-            'name' => $request->name,
-        ]);
+        $profile = $user->profile;
+        abort_unless($profile, 403, 'Profil anggota tidak ditemukan.');
 
-        if ($request->filled('password')) {
-            $user->update([
-                'password' => $request->password,
+        $validated = $request->validated();
+
+        DB::transaction(function () use ($user, $profile, $validated) {
+            $user->update(['name' => $validated['name']]);
+
+            if (!empty($validated['password'])) {
+                $user->update(['password' => $validated['password']]);
+            }
+
+            $profile->update([
+                'no_telepon' => $validated['no_telepon'] ?? null,
+                'alamat' => $validated['alamat'] ?? null,
             ]);
-        }
-
-        $user->profile->update([
-            'no_telepon' => $request->no_telepon,
-            'alamat' => $request->alamat,
-        ]);
+        });
 
         return redirect()->route('profile.show')->with('success', 'Profil berhasil diperbarui.');
     }

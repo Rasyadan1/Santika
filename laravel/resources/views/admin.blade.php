@@ -2,130 +2,93 @@
 
 @section('content')
 <div class="flex min-h-screen flex-col bg-mystic md:flex-row">
-    
-    <!-- Sidebar Admin -->
-    <aside class="border-b border-sidebar-border bg-sidebar md:sticky md:top-0 md:h-screen md:w-64 md:border-r md:border-b-0">
-        <div class="px-6 py-5">
-            <span class="font-display text-3xl tracking-wider text-primary">SANTIKA</span>
-            <p class="text-xs text-muted-foreground">Panel Juru Kunci (Admin)</p>
-        </div>
-        <nav class="flex gap-1 overflow-x-auto px-3 pb-3 md:flex-col md:pb-0">
-            <a href="/admin" class="flex shrink-0 items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-primary">
-                <span>🗡️</span> Data Unit
-            </a>
-            <a href="#" class="flex shrink-0 items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground">
-                <span>🏷️</span> Data Kategori
-            </a>
-            <a href="#" class="flex shrink-0 items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground">
-                <span>🧙</span> Data Anggota
-            </a>
-            <a href="#" class="flex shrink-0 items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground">
-                <span>📜</span> Riwayat Peminjaman
-            </a>
-            <hr class="my-3 border-sidebar-border">
-            <a href="/" class="flex shrink-0 items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition text-destructive hover:bg-destructive/20">
-                <span>🚪</span> Keluar
-            </a>
-        </nav>
-    </aside>
+    @include('partials.admin-navigation')
 
-    <!-- Main Content Area -->
-    <main class="flex-1 p-4 pb-24 md:p-8">
-        
-        <!-- Flash Messages Placeholder -->
-        @if(session('success'))
-            <div class="mb-4 rounded border border-success/50 bg-success/10 p-3 text-sm text-success">
-                {{ session('success') }}
-            </div>
+    <main class="flex-1 p-4 pb-12 md:p-8">
+        @if (session('success'))
+            <div class="mb-4 rounded-lg border border-success/50 bg-success/10 p-3 text-sm text-success">{{ session('success') }}</div>
         @endif
-        
-        <!-- Header & Action Button -->
+        @if (session('error'))
+            <div class="mb-4 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">{{ session('error') }}</div>
+        @endif
+
         <div class="flex flex-wrap items-end justify-between gap-4">
             <div>
-                <h1 class="text-2xl font-bold">Data Unit</h1>
-                <p class="text-sm text-muted-foreground">Semua alat mistis yang siap disewakan.</p>
+                <h1 class="text-2xl font-bold">Ringkasan Santika</h1>
+                <p class="text-sm text-muted-foreground">Pantau data unit dan anggota dalam sistem.</p>
             </div>
-            <!-- Tombol Tambah Unit (Siap diarahkan ke route form create) -->
-            <a href="/admin/create" class="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground glow-primary hover:brightness-110 transition">
-                + Tambah Unit Baru
-            </a>
+            <div class="flex w-full flex-wrap gap-2 sm:w-auto">
+                <a href="{{ route('admin.units.create') }}" class="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:brightness-110">+ Tambah Unit</a>
+                <form action="{{ route('admin.dashboard') }}" method="GET" class="flex min-w-0 flex-1 gap-2 sm:w-72 sm:flex-none">
+                <input type="search" name="search" value="{{ $search }}" placeholder="Cari nama atau kode unit..." class="min-w-0 flex-1 rounded-lg border border-input bg-background/60 px-4 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/40" />
+                    <button type="submit" class="rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-semibold transition hover:border-primary/60 hover:text-primary">Cari</button>
+                </form>
+            </div>
         </div>
 
-        <!-- Summary Stat Cards -->
         <div class="mt-6 grid gap-4 sm:grid-cols-3">
             <div class="rounded-xl border border-border bg-card p-5">
                 <p class="text-sm text-muted-foreground">Total Unit</p>
-                <p class="mt-1 text-3xl font-bold">{{ $totalUnit ?? 0 }}</p>
+                <p class="mt-1 text-3xl font-bold">{{ $totalUnit }}</p>
             </div>
             <div class="rounded-xl border border-border bg-card p-5">
                 <p class="text-sm text-muted-foreground">Sedang Dipinjam</p>
-                <p class="mt-1 text-3xl font-bold text-destructive">{{ $sedangDipinjam ?? 0 }}</p>
+                <p class="mt-1 text-3xl font-bold text-destructive">{{ $sedangDipinjam }}</p>
             </div>
             <div class="rounded-xl border border-border bg-card p-5">
                 <p class="text-sm text-muted-foreground">Anggota Terdaftar</p>
-                <p class="mt-1 text-3xl font-bold">66</p> <!-- Dummy statis -->
+                <p class="mt-1 text-3xl font-bold">{{ $totalAnggota }}</p>
             </div>
         </div>
 
-        <!-- Data Table -->
         <div class="mt-6 overflow-x-auto rounded-xl border border-border bg-card">
-            <table class="w-full min-w-[640px] text-left text-sm">
+            <table class="w-full min-w-[560px] text-left text-sm">
                 <thead class="border-b border-border bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
                     <tr>
                         <th class="px-5 py-3">Kode Unit</th>
                         <th class="px-5 py-3">Nama Unit</th>
                         <th class="px-5 py-3">Kategori</th>
                         <th class="px-5 py-3">Status</th>
-                        <th class="px-5 py-3 text-right">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($units as $unit)
-                        <tr class="border-b border-border last:border-0 hover:bg-muted/40 transition">
+                    @forelse ($units as $unit)
+                        <tr class="border-b border-border last:border-0 transition hover:bg-muted/40">
                             <td class="px-5 py-3 font-mono text-xs text-muted-foreground">{{ $unit->kode_unit }}</td>
-                            <td class="px-5 py-3 font-medium">
-                                <span class="mr-2">{{ $unit->emoji ?? '🔮' }}</span>{{ $unit->nama_unit }}
-                            </td>
+                            <td class="px-5 py-3 font-medium">{{ $unit->nama_unit }}</td>
                             <td class="px-5 py-3">
                                 <div class="flex flex-wrap gap-1">
-                                    @if(isset($unit->kategori) && is_array($unit->kategori))
-                                        @foreach($unit->kategori as $cat)
-                                            <span class="rounded-md bg-accent px-2 py-0.5 text-xs text-accent-foreground">{{ $cat }}</span>
-                                        @endforeach
-                                    @endif
+                                    @forelse ($unit->categories as $category)
+                                        <span class="rounded-md bg-accent px-2 py-0.5 text-xs text-accent-foreground">{{ $category->nama_kategori }}</span>
+                                    @empty
+                                        <span class="text-xs text-muted-foreground">Belum dikategorikan</span>
+                                    @endforelse
                                 </div>
                             </td>
                             <td class="px-5 py-3">
-                                @if(($unit->status ?? 'Tersedia') == 'Tersedia')
-                                    <span class="rounded-full px-2.5 py-1 text-xs font-semibold bg-success/15 text-success">Tersedia</span>
+                                @if ($unit->status === 'tersedia')
+                                    <span class="rounded-full bg-success/15 px-2.5 py-1 text-xs font-semibold text-success">Tersedia</span>
                                 @else
-                                    <span class="rounded-full px-2.5 py-1 text-xs font-semibold bg-destructive/15 text-destructive">Dipinjam</span>
+                                    <span class="rounded-full bg-destructive/15 px-2.5 py-1 text-xs font-semibold text-destructive">Dipinjam</span>
                                 @endif
-                            </td>
-                            <td class="px-5 py-3 text-right">
-                                <!-- Tombol Edit (Siap diarahkan) -->
-                                <a href="#" class="mr-2 rounded-md border border-border px-3 py-1.5 text-xs hover:border-primary hover:text-primary transition">Edit</a>
-                                
-                                <!-- Form Hapus (Menggunakan Form agar aman saat delete) -->
-                                <form action="#" method="POST" class="inline-block" onsubmit="return confirm('Yakin ingin membakar (menghapus) unit ini?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="rounded-md border border-destructive/50 px-3 py-1.5 text-xs text-destructive hover:bg-destructive hover:text-destructive-foreground transition">
-                                        Hapus
-                                    </button>
-                                </form>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-5 py-8 text-center text-muted-foreground">
-                                👻 Belum ada unit yang didaftarkan.
+                            <td colspan="4" class="px-5 py-8 text-center text-muted-foreground">
+                                @if ($search)
+                                    Tidak ada unit yang cocok dengan pencarian “{{ $search }}”.
+                                @else
+                                    👻 Belum ada unit yang didaftarkan.
+                                @endif
                             </td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
+
+        <div class="mt-4">{{ $units->links() }}</div>
     </main>
 </div>
 @endsection
