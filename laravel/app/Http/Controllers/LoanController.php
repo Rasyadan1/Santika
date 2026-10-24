@@ -30,7 +30,7 @@ class LoanController extends Controller
 
         try {
             $this->loanService->pinjam($profile, $unit);
-            return redirect()->route('pinjaman.index')
+            return redirect()->route('katalog')
                 ->with('success', "Unit \"{$unit->nama_unit}\" berhasil dipinjam!");
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
@@ -43,9 +43,10 @@ class LoanController extends Controller
     public function index()
     {
         $user = Auth::user();
-        $profile = $user->profile;
 
-        $pinjamanAktif = Peminjaman::where('profile_id', $profile->id)
+        $pinjamanAktif = Peminjaman::whereHas('profile', function ($query) use ($user) {
+            $query->where('user_id', $user->id);
+        })
             ->where('status', 'dipinjam')
             ->with('unit.categories')
             ->orderBy('tanggal_pinjam', 'desc')
@@ -60,9 +61,10 @@ class LoanController extends Controller
     public function riwayat()
     {
         $user = Auth::user();
-        $profile = $user->profile;
 
-        $riwayat = Peminjaman::where('profile_id', $profile->id)
+        $riwayat = Peminjaman::whereHas('profile', function ($query) use ($user) {
+            $query->where('user_id', $user->id);
+        })
             ->with(['unit.categories', 'admin'])
             ->orderBy('tanggal_pinjam', 'desc')
             ->paginate(15);

@@ -18,8 +18,14 @@ class LoanService
     public function pinjam(Profile $profile, Unit $unit): Peminjaman
     {
         return DB::transaction(function () use ($profile, $unit) {
-            // Lock baris unit untuk mencegah race condition
-            $unit = Unit::where('id', $unit->id)->lockForUpdate()->first();
+            // Serialize borrowing attempts by one member so the active-loan cap cannot race.
+            $lockedProfile = Profile::whereKey($profile->id)->lockForUpdate()->first();
+            if (!$lockedProfile) {
+                throw new \Exception('Profil anggota tidak ditemukan.');
+            }
+
+            // Lock the unit to prevent two members renting the same physical item.
+            $unit = Unit::whereKey($unit->id)->lockForUpdate()->first();
 
             if (!$unit || !$unit->isTersedia()) {
                 throw new \Exception('Unit ini sedang tidak tersedia untuk dipinjam.');
@@ -27,7 +33,7 @@ class LoanService
 
             // Cek batas pinjaman aktif
             $batasPinjam = config('santika.batas_pinjam', 2);
-            $pinjamanAktif = $profile->jumlahPinjamanAktif();
+            $pinjamanAktif = $lockedProfile->jumlahPinjamanAktif();
 
             if ($pinjamanAktif >= $batasPinjam) {
                 throw new \Exception("Anda sudah memiliki {$pinjamanAktif} pinjaman aktif. Maksimal {$batasPinjam} unit.");
@@ -38,7 +44,7 @@ class LoanService
 
             // Buat record peminjaman
             $peminjaman = Peminjaman::create([
-                'profile_id' => $profile->id,
+                'profile_id' => $lockedProfile->id,
                 'unit_id' => $unit->id,
                 'tanggal_pinjam' => $tanggalPinjam,
                 'tanggal_jatuh_tempo' => $tanggalPinjam->copy()->addDays($durasiPinjam),
@@ -70,10 +76,11 @@ class LoanService
             $tanggalKembali = Carbon::today();
             $hariTerlambat = $peminjaman->hitungHariTerlambat($tanggalKembali);
 
-            // Hitung denda berdasarkan tarif per unit per hari
+            // Denda keterlambatan memakai tarif tetap yang terpisah dari harga sewa unit.
+            $dendaPerHari = (int) config('santika.denda_per_hari', 50000);
+            $denda = $hariTerlambat * $dendaPerHari;
+
             $unit = $peminjaman->unit;
-            $tarifPerHari = $unit->tarif_per_hari ?? config('santika.denda_per_hari', 10000);
-            $denda = $hariTerlambat * $tarifPerHari;
 
             // Update peminjaman
             $peminjaman->update([

@@ -4,13 +4,29 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\CategoryRequest;
 use App\Models\Category;
+use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $categories = Category::withCount('units')->orderBy('nama_kategori')->paginate(15);
-        return view('admin.categories.index', compact('categories'));
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+        ]);
+        $search = trim($validated['search'] ?? '');
+
+        $categories = Category::withCount('units')
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('nama_kategori', 'like', "%{$search}%")
+                        ->orWhere('deskripsi', 'like', "%{$search}%");
+                });
+            })
+            ->orderBy('nama_kategori')
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('admin.categories.index', compact('categories', 'search'));
     }
 
     public function create()

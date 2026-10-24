@@ -3,11 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Peminjaman;
-use App\Models\Profile;
+
 use App\Models\User;
 use App\Services\LoanService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class ReturnController extends Controller
 {
@@ -57,23 +58,29 @@ class ReturnController extends Controller
      */
     public function riwayat(Request $request)
     {
+        $filters = $request->validate([
+            'member_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where('role', 'user')],
+            'status' => ['nullable', Rule::in(['dipinjam', 'dikembalikan'])],
+        ]);
+
         $query = Peminjaman::with(['profile.user', 'unit', 'admin']);
 
-        // Filter berdasarkan anggota
-        if ($request->filled('member_id')) {
-            $query->whereHas('profile', function ($q) use ($request) {
-                $q->where('user_id', $request->member_id);
+        if (!empty($filters['member_id'])) {
+            $query->whereHas('profile', function ($q) use ($filters) {
+                $q->where('user_id', $filters['member_id']);
             });
         }
 
-        // Filter berdasarkan status
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
+        if (!empty($filters['status'])) {
+            $query->where('status', $filters['status']);
         }
 
         $riwayat = $query->orderBy('tanggal_pinjam', 'desc')->paginate(15)->appends($request->query());
 
-        $members = User::where('role', 'user')->orderBy('name')->get();
+        $members = User::where('role', 'user')
+            ->whereHas('profile')
+            ->orderBy('name')
+            ->get();
 
         return view('admin.returns.riwayat', compact('riwayat', 'members'));
     }
@@ -83,8 +90,12 @@ class ReturnController extends Controller
      */
     public function cetakLaporan(User $member)
     {
+        abort_unless($member->role === 'user', 404);
+
         $member->load('profile');
         $profile = $member->profile;
+
+        abort_unless($profile, 404);
 
         $riwayat = Peminjaman::where('profile_id', $profile->id)
             ->with(['unit', 'admin'])
